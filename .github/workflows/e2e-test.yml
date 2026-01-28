@@ -61,7 +61,7 @@ jobs:
         if: matrix.platform == 'openshift'
         run: |
           echo "Installing OpenShift Route CRD to mock platform..."
-          kubectl apply -f https://raw.githubusercontent.com/openshift/router/master/deploy/route_crd.yaml
+          kubectl apply -f https://raw.githubusercontent.com/openshift/router/main/deploy/route_crd.yaml
           sleep 5
 
       - name: Install Frappe Operator

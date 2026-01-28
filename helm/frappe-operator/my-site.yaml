@@ -5,7 +5,9 @@ metadata:
   name: my-bench
   namespace: frappe-operator-system
 spec:
-  storageClassName: ocs-external-storagecluster-cephfs
+  # Using 'standard' storage class for broad compatibility. 
+  # For OpenShift Container Storage, use 'ocs-external-storagecluster-cephfs'
+  storageClassName: standard
   frappeVersion: "version-15"
   apps:
     - name: erpnext

@@ -34,7 +34,7 @@ helm upgrade --install mariadb-operator mariadb-operator/mariadb-operator \
 
 ## 4. Install Frappe Operator
 
-Install the Frappe Operator using the official Helm chart and the stable `v2.6.1` image.
+Install the Frappe Operator using the official Helm chart and the stable `v2.6.3` image.
 
 ```bash
 # Add the Frappe Operator repository
@@ -45,7 +45,7 @@ helm repo update
 helm upgrade --install frappe-operator frappe-operator/frappe-operator \
   --namespace frappe-operator-system \
   --set operator.image.repository=ghcr.io/rmallam/frappe-operator \
-  --set operator.image.tag=v2.6.1 \
+  --set operator.image.tag=v2.6.3 \
   --wait
 ```
 
@@ -58,18 +58,18 @@ oc logs -l control-plane=controller-manager -n frappe-operator-system -c manager
 
 ## 5. Security Note: SCC Compatibility
 
-The Frappe Operator `v2.6.1` is designed to work with OpenShift's standard `restricted-v2` Security Context Constraint (SCC) out of the box. 
+The Frappe Operator `v2.6.3` is designed to work with OpenShift's standard `restricted-v2` Security Context Constraint (SCC) out of the box. 
 
 -   **Dynamic UIDs**: The operator uses `nil` defaults for `runAsUser`, allowing OpenShift to automatically assign a compliant UID from the namespace's range.
 -   **Filesystem Access**: It uses a platform-aware approach to volume permissions, ensuring compatibility with OpenShift's filesystem group management.
 
 For more technical details on how we handle SCCs, see the [OpenShift Technical Guide](./openshift.md).
 
-## 5. Deployment Examples
+## 6. Deployment Examples
 
 Once the operators are running, you can deploy your first site using the following sequence of manifests.
 
-### Step 5.1: Create MariaDB Shared Instance
+### Step 6.1: Create MariaDB Shared Instance
 Create a file named `mariadb-instance.yaml`. This provides the database infrastructure for multiple sites.
 
 ```yaml
@@ -103,7 +103,7 @@ spec:
   replicas: 1
 ```
 
-### Step 5.2: Create a FrappeBench
+### Step 6.2: Create a FrappeBench
 A Bench represents your application environment (source code and common infrastructure). Create `my-bench.yaml`:
 
 ```yaml
@@ -121,7 +121,7 @@ spec:
     - name: erpnext
 ```
 
-### Step 5.3: Create a FrappeSite
+### Step 6.3: Create a FrappeSite
 A Site is your actual application instance (SaaS tenant). Create `my-site.yaml`:
 
 ```yaml
@@ -163,7 +163,7 @@ oc apply -f my-bench.yaml
 oc apply -f my-site.yaml
 ```
 
-## 6. Verification & Troubleshooting
+## 7. Verification & Troubleshooting
 
 ### Check Pods and Jobs
 OpenShift monitors resource compatibility. You can verify the status with:

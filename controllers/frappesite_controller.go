@@ -1401,7 +1401,7 @@ func (r *FrappeSiteReconciler) getPodSecurityContext(ctx context.Context, bench 
 		},
 	}
 
-	if !isPlatformOpenShift(ctx, r.Client) {
+	if !r.IsOpenShift {
 		secCtx.RunAsUser = defaultUID
 		secCtx.RunAsGroup = defaultGID
 	} else {
@@ -1434,7 +1434,7 @@ func (r *FrappeSiteReconciler) getContainerSecurityContext(ctx context.Context, 
 		ReadOnlyRootFilesystem: boolPtr(false),
 	}
 
-	if !isPlatformOpenShift(ctx, r.Client) {
+	if !r.IsOpenShift {
 		secCtx.RunAsUser = defaultUID
 		secCtx.RunAsGroup = defaultGID
 	}

@@ -338,39 +338,72 @@ func (r *FrappeBenchReconciler) ensureRedisStatefulSet(ctx context.Context, benc
 		sts.ObjectMeta = metav1.ObjectMeta{
 			Name:      stsName,
 			Namespace: bench.Namespace,
+			Labels:    r.benchLabels(bench),
 		}
+		sts.Spec = appsv1.StatefulSetSpec{
+			ServiceName: stsName,
+			Replicas:    &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: r.componentLabels(bench, fmt.Sprintf("redis-%s", role)),
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: r.componentLabels(bench, fmt.Sprintf("redis-%s", role)),
+				},
+				Spec: corev1.PodSpec{
+					SecurityContext: r.getRedisPodSecurityContext(bench),
+					Containers: []corev1.Container{
+						{
+							Name:    "redis",
+							Image:   redisImage,
+							Command: []string{"redis-server"},
+							// Disable RDB/AOF persistence to avoid stop-writes-on-bgsave-error in ephemeral environments
+							Args: []string{"--save", "", "--appendonly", "no", "--stop-writes-on-bgsave-error", "no"},
+							Ports: []corev1.ContainerPort{
+								{
+									ContainerPort: 6379,
+									Name:          "redis",
+								},
+							},
+							Resources:       r.getRedisResources(bench),
+							SecurityContext: r.getRedisContainerSecurityContext(bench),
+						},
+					},
+				},
+			},
+		}
+
+		if err := controllerutil.SetControllerReference(bench, sts, r.Scheme); err != nil {
+			return err
+		}
+
+		return r.Create(ctx, sts)
 	}
 
-	// Update mutable fields
+	// Update mutable fields for existing StatefulSet
 	sts.Labels = r.benchLabels(bench)
-	sts.Spec = appsv1.StatefulSetSpec{
-		ServiceName: stsName,
-		Replicas:    &replicas,
-		Selector: &metav1.LabelSelector{
-			MatchLabels: r.componentLabels(bench, fmt.Sprintf("redis-%s", role)),
+	sts.Spec.Replicas = &replicas
+	sts.Spec.Template = corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: r.componentLabels(bench, fmt.Sprintf("redis-%s", role)),
 		},
-		Template: corev1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: r.componentLabels(bench, fmt.Sprintf("redis-%s", role)),
-			},
-			Spec: corev1.PodSpec{
-				SecurityContext: r.getRedisPodSecurityContext(bench),
-				Containers: []corev1.Container{
-					{
-						Name:    "redis",
-						Image:   redisImage,
-						Command: []string{"redis-server"},
-						// Disable RDB/AOF persistence to avoid stop-writes-on-bgsave-error in ephemeral environments
-						Args: []string{"--save", "", "--appendonly", "no", "--stop-writes-on-bgsave-error", "no"},
-						Ports: []corev1.ContainerPort{
-							{
-								ContainerPort: 6379,
-								Name:          "redis",
-							},
+		Spec: corev1.PodSpec{
+			SecurityContext: r.getRedisPodSecurityContext(bench),
+			Containers: []corev1.Container{
+				{
+					Name:    "redis",
+					Image:   redisImage,
+					Command: []string{"redis-server"},
+					// Disable RDB/AOF persistence to avoid stop-writes-on-bgsave-error in ephemeral environments
+					Args: []string{"--save", "", "--appendonly", "no", "--stop-writes-on-bgsave-error", "no"},
+					Ports: []corev1.ContainerPort{
+						{
+							ContainerPort: 6379,
+							Name:          "redis",
 						},
-						Resources:       r.getRedisResources(bench),
-						SecurityContext: r.getRedisContainerSecurityContext(bench),
 					},
+					Resources:       r.getRedisResources(bench),
+					SecurityContext: r.getRedisContainerSecurityContext(bench),
 				},
 			},
 		},
@@ -380,11 +413,7 @@ func (r *FrappeBenchReconciler) ensureRedisStatefulSet(ctx context.Context, benc
 		return err
 	}
 
-	if existing {
-		return r.Update(ctx, sts)
-	}
-
-	return r.Create(ctx, sts)
+	return r.Update(ctx, sts)
 }
 
 // ensureGunicorn ensures the Gunicorn Deployment and Service exist
@@ -501,7 +530,7 @@ func (r *FrappeBenchReconciler) ensureGunicornDeployment(ctx context.Context, be
 								},
 							},
 							Resources:       r.getGunicornResources(bench),
-							SecurityContext: r.getContainerSecurityContext(context.TODO(), bench),
+							SecurityContext: r.getContainerSecurityContext(ctx, bench),
 							Env: []corev1.EnvVar{
 								{
 									Name:  "USER",
@@ -675,7 +704,7 @@ func (r *FrappeBenchReconciler) ensureNginxDeployment(ctx context.Context, bench
 								},
 							},
 							Resources:       r.getNginxResources(bench),
-							SecurityContext: r.getContainerSecurityContext(context.TODO(), bench),
+							SecurityContext: r.getContainerSecurityContext(ctx, bench),
 						},
 					},
 					Volumes: []corev1.Volume{
@@ -817,7 +846,7 @@ func (r *FrappeBenchReconciler) ensureSocketIODeployment(ctx context.Context, be
 								},
 							},
 							Resources:       r.getSocketIOResources(bench),
-							SecurityContext: r.getContainerSecurityContext(context.TODO(), bench),
+							SecurityContext: r.getContainerSecurityContext(ctx, bench),
 							Env: []corev1.EnvVar{
 								{
 									Name:  "USER",
@@ -910,7 +939,7 @@ func (r *FrappeBenchReconciler) ensureScheduler(ctx context.Context, bench *vyog
 								},
 							},
 							Resources:       r.getSchedulerResources(bench),
-							SecurityContext: r.getContainerSecurityContext(context.TODO(), bench),
+							SecurityContext: r.getContainerSecurityContext(ctx, bench),
 							Env: []corev1.EnvVar{
 								{
 									Name:  "USER",
@@ -1072,7 +1101,7 @@ func (r *FrappeBenchReconciler) ensureWorkerDeployment(ctx context.Context, benc
 								},
 							},
 							Resources:       resources,
-							SecurityContext: r.getContainerSecurityContext(context.TODO(), bench),
+							SecurityContext: r.getContainerSecurityContext(ctx, bench),
 							Env: []corev1.EnvVar{
 								{
 									Name:  "USER",
