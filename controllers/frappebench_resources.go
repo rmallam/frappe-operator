@@ -1642,6 +1642,7 @@ func (r *FrappeBenchReconciler) getPodSecurityContext(ctx context.Context, bench
 		RunAsNonRoot: boolPtr(true),
 		// RunAsUser/Group removed to allow OpenShift SCC or auto-detection
 	}
+	fsGroupChangePolicy := corev1.FSGroupChangeAlways
 
 	// For OpenShift, match namespace default MCS label
 	logger := log.FromContext(ctx)
@@ -1660,7 +1661,7 @@ func (r *FrappeBenchReconciler) getPodSecurityContext(ctx context.Context, bench
 			logger.Info("Namespace MCS label is empty, skipping SELinuxOptions")
 		}
 
-		// Ensure FSGroup fields are nil for OpenShift
+		// Ensure FSGroup fields are nil for OpenShift as they are usually assigned by SCC
 		secCtx.FSGroup = nil
 		secCtx.FSGroupChangePolicy = nil
 		secCtx.SupplementalGroups = nil
@@ -1669,8 +1670,6 @@ func (r *FrappeBenchReconciler) getPodSecurityContext(ctx context.Context, bench
 		logger.V(1).Info("Not on OpenShift platform, using standard security context")
 		// Standard Kubernetes: Set FSGroup to ensure permission fixup
 		defaultFSGroup := getDefaultFSGroup()
-		fsGroupChangePolicy := corev1.FSGroupChangeAlways
-
 		secCtx.FSGroup = defaultFSGroup
 		secCtx.FSGroupChangePolicy = &fsGroupChangePolicy
 	}
