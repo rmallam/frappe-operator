@@ -87,25 +87,13 @@ func (r *FrappeSiteReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		r.Recorder.Event(site, corev1.EventTypeNormal, "FinalizerAdded", "Finalizer added to FrappeSite")
 	}
 
-	// Set progressing condition
-	r.setCondition(site, metav1.Condition{
-		Type:    "Progressing",
-		Status:  metav1.ConditionTrue,
-		Reason:  "Reconciling",
-		Message: "Starting site reconciliation",
-	})
-	if err := r.updateStatus(ctx, site); err != nil {
-		logger.Error(err, "Failed to update status")
-		return ctrl.Result{}, err
-	}
-
 	// Handle deletion
 	if site.GetDeletionTimestamp() != nil {
 		if controllerutil.ContainsFinalizer(site, frappeSiteFinalizer) {
 			logger.Info("Deleting site", "site", site.Name)
 			r.Recorder.Event(site, corev1.EventTypeNormal, "Deleting", "FrappeSite deletion started")
 
-			// Set deletion condition
+			// Set terminating condition
 			r.setCondition(site, metav1.Condition{
 				Type:    "Terminating",
 				Status:  metav1.ConditionTrue,
@@ -171,9 +159,20 @@ func (r *FrappeSiteReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			if err := r.Update(ctx, site); err != nil {
 				return ctrl.Result{}, err
 			}
-
 		}
 		return ctrl.Result{}, nil
+	}
+
+	// Set progressing condition
+	r.setCondition(site, metav1.Condition{
+		Type:    "Progressing",
+		Status:  metav1.ConditionTrue,
+		Reason:  "Reconciling",
+		Message: "Starting site reconciliation",
+	})
+	if err := r.updateStatus(ctx, site); err != nil {
+		logger.Error(err, "Failed to update status")
+		return ctrl.Result{}, err
 	}
 
 	// Validate benchRef
@@ -878,8 +877,8 @@ fi
 echo "Creating common_site_config.json..."
 cat > sites/common_site_config.json <<EOF
 {
-  "redis_cache": "redis://%s-redis-cache:6379",
-  "redis_queue": "redis://%s-redis-queue:6379",
+  "redis_cache": "redis://${BENCH_NAME}-redis-cache:6379",
+  "redis_queue": "redis://${BENCH_NAME}-redis-queue:6379",
   "socketio_port": 9000
 }
 EOF

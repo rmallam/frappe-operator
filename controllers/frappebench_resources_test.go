@@ -456,3 +456,73 @@ func TestFrappeBenchReconciler_Helpers(t *testing.T) {
 		}
 	})
 }
+
+func TestEnsureRedisStatefulSet_UpdateImmutability(t *testing.T) {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(vyogotechv1alpha1.AddToScheme(scheme))
+
+	namespace := "test-ns"
+	benchName := "test-bench"
+	bench := &vyogotechv1alpha1.FrappeBench{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "FrappeBench",
+			APIVersion: "vyogo.tech/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{Name: benchName, Namespace: namespace},
+		Spec: vyogotechv1alpha1.FrappeBenchSpec{
+			FrappeVersion: "v15",
+		},
+	}
+
+	stsName := benchName + "-cache"
+	existingSts := &appsv1.StatefulSet{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "StatefulSet",
+			APIVersion: "apps/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      stsName,
+			Namespace: namespace,
+			Labels:    map[string]string{"foo": "bar"},
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"component": "redis-cache-dedicated"},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"component": "redis-cache-dedicated"},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{Name: "redis", Image: "redis:6"}},
+				},
+			},
+		},
+	}
+
+	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(bench, existingSts).Build()
+	r := &FrappeBenchReconciler{Client: client, Scheme: scheme}
+
+	// This should NOT fail or change the selector
+	err := r.ensureRedisStatefulSet(context.TODO(), bench, "cache")
+	if err != nil {
+		t.Fatalf("ensureRedisStatefulSet failed on existing object: %v", err)
+	}
+
+	updatedSts := &appsv1.StatefulSet{}
+	err = client.Get(context.TODO(), types.NamespacedName{Name: stsName, Namespace: namespace}, updatedSts)
+	if err != nil {
+		t.Fatalf("Get updatedSts failed: %v", err)
+	}
+
+	// Verify selector is unchanged
+	if updatedSts.Spec.Selector.MatchLabels["component"] != "redis-cache-dedicated" {
+		t.Errorf("Expected selector to be unchanged, got %v", updatedSts.Spec.Selector.MatchLabels)
+	}
+
+	// Verify labels were updated (metadata is mutable)
+	if updatedSts.Labels["bench"] != benchName {
+		t.Errorf("Expected bench label to be updated, got %v. Metadata: %+v", updatedSts.Labels, updatedSts.ObjectMeta)
+	}
+}

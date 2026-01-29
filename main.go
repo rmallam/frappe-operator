@@ -27,8 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -55,24 +53,6 @@ func init() {
 	utilruntime.Must(vyogotechv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(routev1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
-}
-
-// detectOpenShift checks if running on OpenShift cluster
-func detectOpenShift(cfg *rest.Config) (bool, error) {
-	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
-	if err != nil {
-		return false, err
-	}
-	apiGroups, err := dc.ServerGroups()
-	if err != nil {
-		return false, err
-	}
-	for _, group := range apiGroups.Groups {
-		if group.Name == "route.openshift.io" {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 func main() {
@@ -117,11 +97,7 @@ func main() {
 	}
 
 	// Detect OpenShift
-	isOpenShift, err := detectOpenShift(mgr.GetConfig())
-	if err != nil {
-		setupLog.Error(err, "unable to detect platform")
-		os.Exit(1)
-	}
+	isOpenShift := controllers.IsRouteAPIAvailable(mgr.GetConfig())
 	if isOpenShift {
 		setupLog.Info("OpenShift platform detected")
 	} else {

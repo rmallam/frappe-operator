@@ -381,7 +381,17 @@ func (r *FrappeBenchReconciler) ensureRedisStatefulSet(ctx context.Context, benc
 	}
 
 	// Update mutable fields for existing StatefulSet
-	sts.Labels = r.benchLabels(bench)
+	if sts.Labels == nil {
+		sts.Labels = make(map[string]string)
+	}
+	newLabels := r.benchLabels(bench)
+	for k, v := range newLabels {
+		sts.Labels[k] = v
+	}
+	// Also ensure mandatory labels are present
+	sts.Labels["app"] = "frappe"
+	sts.Labels["bench"] = bench.Name
+
 	sts.Spec.Replicas = &replicas
 	sts.Spec.Template = corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{

@@ -26,13 +26,13 @@ import (
 	"strings"
 	"time"
 
-
 	vyogotechv1alpha1 "github.com/vyogotech/frappe-operator/api/v1alpha1"
 	"github.com/vyogotech/frappe-operator/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
 )
 
 // getBenchImage returns the image to use from the bench
@@ -108,7 +108,26 @@ func (r *FrappeSiteReconciler) generatePassword(length int) string {
 	return string(password)
 }
 
+// IsRouteAPIAvailable checks if the OpenShift route API group is available
+func IsRouteAPIAvailable(config *rest.Config) bool {
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
+	if err != nil {
+		return false
+	}
 
+	apiGroupList, err := discoveryClient.ServerGroups()
+	if err != nil {
+		return false
+	}
+
+	for _, group := range apiGroupList.Groups {
+		if group.Name == "route.openshift.io" {
+			return true
+		}
+	}
+
+	return false
+}
 
 func (r *FrappeSiteReconciler) isOpenShiftPlatform(ctx context.Context) bool {
 	return r.IsOpenShift

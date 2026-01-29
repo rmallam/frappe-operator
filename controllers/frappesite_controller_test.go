@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -415,6 +416,57 @@ var _ = Describe("FrappeSite Controller", func() {
 			err := reconcilerWithoutBench.deleteSite(ctx, site)
 			// When bench is not found, deleteSite returns nil (bench already deleted)
 			Expect(err).NotTo(HaveOccurred()) // Should return nil when bench not found
+		})
+	})
+
+	Describe("Script Generation Safety", func() {
+		It("should use shell variable interpolation in common_site_config.json", func() {
+			// This test traces the logic of common_site_config.json creation
+			// We can verify the string content if we make it a separate helper,
+			// or we can test the effect on the job args.
+			// Since initScript is a local variable in ensureSiteInitialized, we'll verify it via Job Args.
+
+			Expect(fakeClient.Create(ctx, bench)).To(Succeed())
+			Expect(fakeClient.Create(ctx, site)).To(Succeed())
+
+			_, err := reconciler.ensureSiteInitialized(ctx, site, bench, "test-site.local", nil, nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			job := &batchv1.Job{}
+			Expect(fakeClient.Get(ctx, types.NamespacedName{Name: site.Name + "-init", Namespace: site.Namespace}, job)).To(Succeed())
+
+			scriptContent := job.Spec.Template.Spec.Containers[0].Args[0]
+			Expect(scriptContent).To(ContainSubstring(`"redis_cache": "redis://${BENCH_NAME}-redis-cache:6379"`))
+			Expect(scriptContent).NotTo(ContainSubstring(`%s`))
+		})
+	})
+
+	Describe("Reconciliation Security", func() {
+		It("should bail out immediately if DeletionTimestamp is set", func() {
+			now := metav1.Now()
+			site.SetDeletionTimestamp(&now)
+			// We need a finalizer so it doesn't just get deleted by the fake client immediately if we were using a real one,
+			// but here we just want to see Reconcile behavior.
+			site.SetFinalizers([]string{frappeSiteFinalizer})
+			Expect(fakeClient.Create(ctx, site)).To(Succeed())
+
+			req := ctrl.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      site.Name,
+					Namespace: site.Namespace,
+				},
+			}
+
+			// Reconcile should return (Result{}, nil) and NOT update status to "Provisioning"
+			result, err := reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.IsZero()).To(BeTrue())
+
+			updatedSite := &vyogotechv1alpha1.FrappeSite{}
+			Expect(fakeClient.Get(ctx, types.NamespacedName{Name: site.Name, Namespace: site.Namespace}, updatedSite)).To(Succeed())
+
+			// If it bails early, Phase should NOT be "Provisioning" (which is set after internal processing)
+			Expect(updatedSite.Status.Phase).NotTo(Equal(vyogotechv1alpha1.FrappeSitePhaseProvisioning))
 		})
 	})
 })
