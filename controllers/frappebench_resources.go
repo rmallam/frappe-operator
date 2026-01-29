@@ -1668,6 +1668,7 @@ func (r *FrappeBenchReconciler) getPodSecurityContext(ctx context.Context, bench
 		// Removed to allow SCC restricted-v2 to function
 		// Explicitly unset FSGroup to avoid default of 0
 		secCtx.FSGroup = nil
+		secCtx.FSGroupChangePolicy = nil
 		secCtx.SupplementalGroups = nil
 		logger.Info("Using OpenShift defaults (no explicit FSGroup/SupplementalGroups due to SCC restricted-v2)")
 
