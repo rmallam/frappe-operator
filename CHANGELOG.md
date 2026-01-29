@@ -5,6 +5,17 @@ All notable changes to the Frappe Operator project will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.4] - 2026-01-29
+
+### Fixed
+- **OpenShift Permission Denied (Bench Init)**: Resolved `root:root` permission issues on dynamically provisioned NFS volumes by configuring the OpenEBS StorageClass with `FilePermissions: "mode: 0777, gid: 0"`. This allows the `frappe` user to write to the shared volume without requiring `anyuid` or privileged SCCs.
+- **Missing RBAC for SiteRestore**: Added `siterestores` resource permissions to the operator's ClusterRole, fixing reconciliation errors during site restoration.
+
+### Infrastructure
+- **Helm Chart**: Bumped version to `2.6.4` to include the verified OpenShift permission fixes and RBAC updates.
+
+---
+
 ## [2.6.3] - 2026-01-28
 
 ### Fixed
