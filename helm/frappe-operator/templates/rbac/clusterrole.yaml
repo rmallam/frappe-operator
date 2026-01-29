@@ -54,7 +54,6 @@ rules:
   - pods
   - secrets
   - services
-  - namespaces
   verbs:
   - create
   - delete
@@ -62,6 +61,14 @@ rules:
   - list
   - patch
   - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - get
+  - list
   - watch
 - apiGroups:
   - apps
