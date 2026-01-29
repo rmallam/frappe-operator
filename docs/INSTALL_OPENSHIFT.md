@@ -45,7 +45,7 @@ helm repo update
 helm upgrade --install frappe-operator rmallam/frappe-operator \
   --namespace frappe-operator-system \
   --set operator.image.repository=ghcr.io/rmallam/frappe-operator \
-  --set operator.image.tag=v2.6.3 \
+  --set operator.image.tag=bkp-rstr-fix \
   --wait
 ```
 
