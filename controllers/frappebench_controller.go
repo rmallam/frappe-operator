@@ -33,8 +33,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -93,8 +91,6 @@ func (r *FrappeBenchReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	} else if !result.IsZero() {
 		return result, nil
 	}
-
-
 
 	// Set progressing condition at start
 	r.setCondition(bench, metav1.Condition{
@@ -818,4 +814,3 @@ func (r *FrappeBenchReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return builder.Complete(r)
 }
-

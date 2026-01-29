@@ -34,8 +34,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -1028,7 +1026,9 @@ exit 0
 		return false, err
 	}
 
-	if err := r.Create(ctx, job); err != nil {
+	jobToCreate := job.DeepCopy()
+	jobToCreate.ResourceVersion = ""
+	if err := r.Create(ctx, jobToCreate); err != nil {
 		return false, err
 	}
 
@@ -1217,16 +1217,15 @@ echo "Site $SITE_NAME dropped successfully!"
 			},
 		}
 
-		// Set controller reference - use site directly as it should have UID set
-		// Clear ResourceVersion on job before SetControllerReference to avoid fake client issues
-		job.ResourceVersion = ""
 		if err := controllerutil.SetControllerReference(site, job, r.Scheme); err != nil {
 			return err
 		}
-		// Clear ResourceVersion again after SetControllerReference (in case it was set)
-		job.ResourceVersion = ""
 
-		if err := r.Create(ctx, job); err != nil {
+		// Create a copy with no ResourceVersion so Create succeeds (required for fake client and real API)
+		jobToCreate := job.DeepCopy()
+		jobToCreate.ResourceVersion = ""
+
+		if err := r.Create(ctx, jobToCreate); err != nil {
 			return fmt.Errorf("failed to create site deletion job: %w", err)
 		}
 
@@ -1273,7 +1272,6 @@ func (r *FrappeSiteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return builder.Complete(r)
 }
-
 
 // getMariaDBRootCredentials retrieves MariaDB root credentials for site deletion
 // Returns (username, password, error). Only use these credentials in deletion jobs.

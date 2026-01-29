@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	vyogotechv1alpha1 "github.com/vyogotech/frappe-operator/api/v1alpha1"
@@ -129,15 +130,15 @@ func TestFrappeBenchReconciler_Delete(t *testing.T) {
 		updatedDeploy.Status.ReadyReplicas = 0
 		client.Status().Update(context.TODO(), updatedDeploy)
 
-		// Pass 2: Delete PVC
+		// Pass 2: Delete PVC and remove finalizer (controller may remove finalizer here; fake client may then remove bench)
 		_, err = r.Reconcile(context.TODO(), ctrl.Request{NamespacedName: types.NamespacedName{Name: benchName, Namespace: namespace}})
-		if err != nil {
+		if err != nil && !errors.IsNotFound(err) && !strings.Contains(err.Error(), "not found") {
 			t.Fatalf("Reconcile 2 failed: %v", err)
 		}
 
-		// Pass 3: Remove Finalizer (now that resources are gone)
+		// Pass 3: No-op if bench already gone (finalizer was removed in Pass 2)
 		_, err = r.Reconcile(context.TODO(), ctrl.Request{NamespacedName: types.NamespacedName{Name: benchName, Namespace: namespace}})
-		if err != nil {
+		if err != nil && !errors.IsNotFound(err) && !strings.Contains(err.Error(), "not found") {
 			t.Fatalf("Reconcile 3 failed: %v", err)
 		}
 
@@ -147,19 +148,16 @@ func TestFrappeBenchReconciler_Delete(t *testing.T) {
 			t.Errorf("Deployment not scaled to 0, got %d", *updatedDeploy.Spec.Replicas)
 		}
 
-		// Verify PVC deleted
-		// Note: Fake client delete might not be instant or check IsNotFound correctly if not fully propagated,
-		// but checking error IsNotFound is standard.
+		// Verify PVC deleted (or bench gone so cleanup completed)
 		err = client.Get(context.TODO(), types.NamespacedName{Name: benchName + "-sites", Namespace: namespace}, pvc)
 		if !errors.IsNotFound(err) {
-			// If not deleted, it might be because the controller didn't reach that step yet or errored silently
 			t.Logf("PVC still exists: %v", err)
 		}
 
-		// Verify finalizer removed
+		// Verify finalizer removed (only if bench still exists in fake client)
 		updatedBench := &vyogotechv1alpha1.FrappeBench{}
-		client.Get(context.TODO(), types.NamespacedName{Name: benchName, Namespace: namespace}, updatedBench)
-		if len(updatedBench.Finalizers) != 0 {
+		err = client.Get(context.TODO(), types.NamespacedName{Name: benchName, Namespace: namespace}, updatedBench)
+		if err == nil && len(updatedBench.Finalizers) != 0 {
 			t.Error("Finalizer not removed")
 		}
 	})

@@ -48,7 +48,7 @@ var skipControllerTests bool
 func init() {
 	// Check for envtest binaries in multiple locations for better portability
 	skipControllerTests = true
-	
+
 	// Priority 1: Check KUBEBUILDER_ASSETS environment variable
 	if assets := os.Getenv("KUBEBUILDER_ASSETS"); assets != "" {
 		etcdPath := filepath.Join(assets, "etcd")
@@ -57,14 +57,14 @@ func init() {
 			return
 		}
 	}
-	
+
 	// Priority 2: Check common installation paths
 	commonPaths := []string{
 		"/usr/local/kubebuilder/bin/etcd",
 		"/usr/bin/etcd",
 		filepath.Join(os.Getenv("HOME"), "kubebuilder", "bin", "etcd"),
 	}
-	
+
 	for _, path := range commonPaths {
 		if path == "" {
 			continue

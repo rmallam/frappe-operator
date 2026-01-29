@@ -1659,7 +1659,7 @@ func (r *FrappeBenchReconciler) getPodSecurityContext(ctx context.Context, bench
 		} else {
 			logger.Info("Namespace MCS label is empty, skipping SELinuxOptions")
 		}
-		
+
 		// Ensure FSGroup fields are nil for OpenShift
 		secCtx.FSGroup = nil
 		secCtx.FSGroupChangePolicy = nil
@@ -1670,7 +1670,7 @@ func (r *FrappeBenchReconciler) getPodSecurityContext(ctx context.Context, bench
 		// Standard Kubernetes: Set FSGroup to ensure permission fixup
 		defaultFSGroup := getDefaultFSGroup()
 		fsGroupChangePolicy := corev1.FSGroupChangeAlways
-		
+
 		secCtx.FSGroup = defaultFSGroup
 		secCtx.FSGroupChangePolicy = &fsGroupChangePolicy
 	}
