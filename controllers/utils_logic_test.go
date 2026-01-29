@@ -13,25 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func TestIsPlatformOpenShift(t *testing.T) {
-	scheme := runtime.NewScheme()
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	t.Run("Nil client", func(t *testing.T) {
-		if isPlatformOpenShift(context.TODO(), nil) {
-			t.Error("Expected false for nil client")
-		}
-	})
-
-	t.Run("Standard k8s (not openshift)", func(t *testing.T) {
-		// Mock client that returns error for RouteList should be considered not OpenShift
-		// Actually, if it's not registered in scheme, it will fail to list.
-		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-		if isPlatformOpenShift(context.TODO(), client) {
-			t.Error("Expected false for standard k8s")
-		}
-	})
-}
 
 func TestGetDefaultSecurityValues(t *testing.T) {
 	t.Run("GetDefaultUID", func(t *testing.T) {

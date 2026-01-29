@@ -26,13 +26,13 @@ import (
 	"strings"
 	"time"
 
-	routev1 "github.com/openshift/api/route/v1"
+
 	vyogotechv1alpha1 "github.com/vyogotech/frappe-operator/api/v1alpha1"
 	"github.com/vyogotech/frappe-operator/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+
 )
 
 // getBenchImage returns the image to use from the bench
@@ -108,24 +108,7 @@ func (r *FrappeSiteReconciler) generatePassword(length int) string {
 	return string(password)
 }
 
-// isPlatformOpenShift checks if we're running on OpenShift
-func isPlatformOpenShift(ctx context.Context, c client.Client) bool {
-	if c == nil {
-		return false
-	}
-	logger := log.FromContext(ctx)
-	// Try to list Routes to check if API is available
-	routeList := &routev1.RouteList{}
-	err := c.List(ctx, routeList)
 
-	if err != nil {
-		logger.V(1).Info("Platform detection check failed", "error", err)
-		return false
-	}
-
-	// If we can list Routes successfully, we're on OpenShift
-	return true
-}
 
 func (r *FrappeSiteReconciler) isOpenShiftPlatform(ctx context.Context) bool {
 	return r.IsOpenShift
