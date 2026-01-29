@@ -108,6 +108,10 @@ func (r *SiteBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// Get the bench
 	bench := &vyogotechv1alpha1.FrappeBench{}
 	if err := r.Get(ctx, client.ObjectKey{Name: benchRef.Name, Namespace: benchRef.Namespace}, bench); err != nil {
+		if errors.IsNotFound(err) {
+			logger.Error(err, "referenced FrappeBench not found", "bench", benchRef.Name)
+			return ctrl.Result{}, r.updateSiteBackupStatus(ctx, siteBackup, "Failed", fmt.Sprintf("FrappeBench %s not found", benchRef.Name), "")
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -116,6 +120,27 @@ func (r *SiteBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	} else {
 		return r.reconcileScheduledBackup(ctx, siteBackup, bench)
 	}
+}
+
+func (r *SiteBackupReconciler) getS3CredentialSecret(ctx context.Context, siteBackup *vyogotechv1alpha1.SiteBackup) (*corev1.Secret, error) {
+	if siteBackup.Spec.Storage == nil || siteBackup.Spec.Storage.S3 == nil {
+		return nil, nil
+	}
+	secret := &corev1.Secret{}
+	err := r.Get(ctx, client.ObjectKey{
+		Name:      siteBackup.Spec.Storage.S3.CredentialSecretRef.Name,
+		Namespace: siteBackup.Spec.Storage.S3.CredentialSecretRef.Namespace,
+	}, secret)
+	if err != nil {
+		if siteBackup.Spec.Storage.S3.CredentialSecretRef.Namespace == "" {
+			// Fallback to siteBackup namespace
+			err = r.Get(ctx, client.ObjectKey{
+				Name:      siteBackup.Spec.Storage.S3.CredentialSecretRef.Name,
+				Namespace: siteBackup.Namespace,
+			}, secret)
+		}
+	}
+	return secret, err
 }
 
 func (r *SiteBackupReconciler) handleFinalizer(ctx context.Context, siteBackup *vyogotechv1alpha1.SiteBackup) error {
@@ -276,10 +301,122 @@ func (r *SiteBackupReconciler) buildBackupArgs(siteBackup *vyogotechv1alpha1.Sit
 	return args
 }
 
+// buildBackupScript creates a shell script for the backup job, optionally including S3 upload
+func (r *SiteBackupReconciler) buildBackupScript(siteBackup *vyogotechv1alpha1.SiteBackup) string {
+	benchArgs := r.buildBackupArgs(siteBackup)
+	benchCmd := strings.Join(benchArgs, " ")
+
+	script := fmt.Sprintf(`#!/bin/bash
+set -e
+
+# Setup user for OpenShift compatibility (fixes getpwuid() error)
+if ! whoami &>/dev/null; then
+  export USER=frappe
+  export LOGNAME=frappe
+  # Try to add user to /etc/passwd if writable
+  if [ -w /etc/passwd ]; then
+    echo "frappe:x:$(id -u):0:frappe user:/home/frappe:/sbin/nologin" >> /etc/passwd
+  fi
+fi
+
+cd /home/frappe/frappe-bench
+echo "Starting Frappe site backup for: %s"
+bench %s
+`, siteBackup.Spec.Site, benchCmd)
+
+	if siteBackup.Spec.Storage != nil && siteBackup.Spec.Storage.S3 != nil {
+		script += fmt.Sprintf(`
+echo "Uploading backup files to S3 bucket: %s"
+python3 << 'PYTHON_SCRIPT'
+import os, boto3, glob, sys
+
+site_name = "%s"
+bucket = os.getenv("S3_BUCKET")
+region = os.getenv("S3_REGION")
+endpoint = os.getenv("S3_ENDPOINT")
+access_key = os.getenv("AWS_ACCESS_KEY_ID")
+secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+
+s3 = boto3.client('s3', 
+    region_name=region if region else None,
+    endpoint_url=endpoint if endpoint else None,
+    aws_access_key_id=access_key,
+    aws_secret_access_key=secret_key)
+
+# The default backup path is sites/{site}/private/backups/
+backup_dir = os.path.join("sites", site_name, "private/backups")
+if not os.path.exists(backup_dir):
+    print(f"Error: Backup directory {backup_dir} not found")
+    sys.exit(1)
+
+# Find all files created in the last 10 minutes (or just the latest ones)
+# bench backup creates several files if --with-files is used
+import time
+currentTime = time.time()
+files_uploaded = 0
+
+for filepath in glob.glob(os.path.join(backup_dir, "*")):
+    if os.path.isfile(filepath) and (currentTime - os.path.getmtime(filepath)) < 600:
+        filename = os.path.basename(filepath)
+        s3_key = f"{site_name}/{filename}"
+        print(f"Uploading {filename} to s3://{bucket}/{s3_key}...")
+        s3.upload_file(filepath, bucket, s3_key)
+        files_uploaded += 1
+
+if files_uploaded == 0:
+    print("Warning: No recent backup files found to upload")
+else:
+    print(f"Successfully uploaded {files_uploaded} files to S3")
+PYTHON_SCRIPT
+`, siteBackup.Spec.Storage.S3.Bucket, siteBackup.Spec.Site)
+	}
+
+	return script
+}
+
 // buildBackupJob creates a Job for one-time backup
 func (r *SiteBackupReconciler) buildBackupJob(siteBackup *vyogotechv1alpha1.SiteBackup, bench *vyogotechv1alpha1.FrappeBench) *batchv1.Job {
 	jobName := siteBackup.Name + "-backup"
-	args := r.buildBackupArgs(siteBackup)
+	backupScript := r.buildBackupScript(siteBackup)
+
+	env := []corev1.EnvVar{}
+	if siteBackup.Spec.Storage != nil && siteBackup.Spec.Storage.S3 != nil {
+		secretName := siteBackup.Spec.Storage.S3.CredentialSecretRef.Name
+		env = append(env, corev1.EnvVar{
+			Name:  "S3_BUCKET",
+			Value: siteBackup.Spec.Storage.S3.Bucket,
+		})
+		if siteBackup.Spec.Storage.S3.Region != "" {
+			env = append(env, corev1.EnvVar{
+				Name:  "S3_REGION",
+				Value: siteBackup.Spec.Storage.S3.Region,
+			})
+		}
+		if siteBackup.Spec.Storage.S3.Endpoint != "" {
+			env = append(env, corev1.EnvVar{
+				Name:  "S3_ENDPOINT",
+				Value: siteBackup.Spec.Storage.S3.Endpoint,
+			})
+		}
+		env = append(env, corev1.EnvVar{
+			Name: "AWS_ACCESS_KEY_ID",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
+					Key:                  "AWS_ACCESS_KEY_ID",
+				},
+			},
+		})
+		env = append(env, corev1.EnvVar{
+			Name: "AWS_SECRET_ACCESS_KEY",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
+					Key:                  "AWS_SECRET_ACCESS_KEY",
+				},
+			},
+		})
+	}
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -295,19 +432,23 @@ func (r *SiteBackupReconciler) buildBackupJob(siteBackup *vyogotechv1alpha1.Site
 		Spec: batchv1.JobSpec{
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyNever,
+					RestartPolicy:   corev1.RestartPolicyNever,
+					SecurityContext: r.getPodSecurityContext(bench),
 					Containers: []corev1.Container{
 						{
 							Name:    "backup",
 							Image:   r.getBenchImage(bench),
-							Command: []string{"bench"},
-							Args:    args,
+							Command: []string{"bash", "-c"},
+							Args:    []string{backupScript},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "sites",
 									MountPath: "/home/frappe/frappe-bench/sites",
+									SubPath:   "frappe-sites",
 								},
 							},
+							Env:             env,
+							SecurityContext: r.getContainerSecurityContext(bench),
 						},
 					},
 					Volumes: []corev1.Volume{
@@ -332,7 +473,46 @@ func (r *SiteBackupReconciler) buildBackupJob(siteBackup *vyogotechv1alpha1.Site
 // buildBackupCronJob creates a CronJob for scheduled backup
 func (r *SiteBackupReconciler) buildBackupCronJob(siteBackup *vyogotechv1alpha1.SiteBackup, bench *vyogotechv1alpha1.FrappeBench) *batchv1.CronJob {
 	cronJobName := siteBackup.Name + "-backup"
-	args := r.buildBackupArgs(siteBackup)
+	backupScript := r.buildBackupScript(siteBackup)
+
+	env := []corev1.EnvVar{}
+	if siteBackup.Spec.Storage != nil && siteBackup.Spec.Storage.S3 != nil {
+		secretName := siteBackup.Spec.Storage.S3.CredentialSecretRef.Name
+		env = append(env, corev1.EnvVar{
+			Name:  "S3_BUCKET",
+			Value: siteBackup.Spec.Storage.S3.Bucket,
+		})
+		if siteBackup.Spec.Storage.S3.Region != "" {
+			env = append(env, corev1.EnvVar{
+				Name:  "S3_REGION",
+				Value: siteBackup.Spec.Storage.S3.Region,
+			})
+		}
+		if siteBackup.Spec.Storage.S3.Endpoint != "" {
+			env = append(env, corev1.EnvVar{
+				Name:  "S3_ENDPOINT",
+				Value: siteBackup.Spec.Storage.S3.Endpoint,
+			})
+		}
+		env = append(env, corev1.EnvVar{
+			Name: "AWS_ACCESS_KEY_ID",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
+					Key:                  "AWS_ACCESS_KEY_ID",
+				},
+			},
+		})
+		env = append(env, corev1.EnvVar{
+			Name: "AWS_SECRET_ACCESS_KEY",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
+					Key:                  "AWS_SECRET_ACCESS_KEY",
+				},
+			},
+		})
+	}
 
 	cronJob := &batchv1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -352,19 +532,23 @@ func (r *SiteBackupReconciler) buildBackupCronJob(siteBackup *vyogotechv1alpha1.
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
-							RestartPolicy: corev1.RestartPolicyNever,
+							RestartPolicy:   corev1.RestartPolicyNever,
+							SecurityContext: r.getPodSecurityContext(bench),
 							Containers: []corev1.Container{
 								{
 									Name:    "backup",
 									Image:   r.getBenchImage(bench),
-									Command: []string{"bench"},
-									Args:    args,
+									Command: []string{"bash", "-c"},
+									Args:    []string{backupScript},
 									VolumeMounts: []corev1.VolumeMount{
 										{
 											Name:      "sites",
 											MountPath: "/home/frappe/frappe-bench/sites",
+											SubPath:   "frappe-sites",
 										},
 									},
+									Env:             env,
+									SecurityContext: r.getContainerSecurityContext(bench),
 								},
 							},
 							Volumes: []corev1.Volume{
@@ -386,6 +570,28 @@ func (r *SiteBackupReconciler) buildBackupCronJob(siteBackup *vyogotechv1alpha1.
 
 	controllerutil.SetControllerReference(siteBackup, cronJob, r.Scheme)
 	return cronJob
+}
+
+// Security context helpers replicated for now (to be centralized later)
+func (r *SiteBackupReconciler) getPodSecurityContext(bench *vyogotechv1alpha1.FrappeBench) *corev1.PodSecurityContext {
+	// Simple implementation for now, can be aligned with frappesite_controller later
+	return &corev1.PodSecurityContext{
+		RunAsNonRoot: boolPtr(true),
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
+	}
+}
+
+func (r *SiteBackupReconciler) getContainerSecurityContext(bench *vyogotechv1alpha1.FrappeBench) *corev1.SecurityContext {
+	return &corev1.SecurityContext{
+		RunAsNonRoot:             boolPtr(true),
+		AllowPrivilegeEscalation: boolPtr(false),
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{"ALL"},
+		},
+		ReadOnlyRootFilesystem: boolPtr(false),
+	}
 }
 
 // getBenchImage returns the image to use for the bench

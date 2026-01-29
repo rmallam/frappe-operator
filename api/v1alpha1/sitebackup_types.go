@@ -17,11 +17,38 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+
+// S3Config defines configuration for S3-compatible storage
+type S3Config struct {
+	// Bucket name
+	// +kubebuilder:validation:Required
+	Bucket string `json:"bucket"`
+
+	// Region (optional for some providers)
+	// +optional
+	Region string `json:"region,omitempty"`
+
+	// Endpoint URL (required for non-AWS providers like Minio/DigitalOcean)
+	// +optional
+	Endpoint string `json:"endpoint,omitempty"`
+
+	// CredentialSecretRef references a Secret containing AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+	// +kubebuilder:validation:Required
+	CredentialSecretRef corev1.SecretReference `json:"credentialSecretRef"`
+}
+
+// BackupStorageConfig defines where the backup should be stored offsite
+type BackupStorageConfig struct {
+	// S3 configuration
+	// +optional
+	S3 *S3Config `json:"s3,omitempty"`
+}
 
 // SiteBackupSpec defines the desired state of SiteBackup
 type SiteBackupSpec struct {
@@ -82,6 +109,10 @@ type SiteBackupSpec struct {
 	// +optional
 	// +kubebuilder:default=false
 	Verbose bool `json:"verbose,omitempty"`
+
+	// Storage defines offsite storage configuration
+	// +optional
+	Storage *BackupStorageConfig `json:"storage,omitempty"`
 }
 
 // SiteBackupStatus defines the observed state of SiteBackup

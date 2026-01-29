@@ -1,0 +1,16 @@
+apiVersion: vyogo.tech/v1alpha1
+kind: SiteBackup
+metadata:
+  name: daily-s3-backup
+  namespace: default
+spec:
+  site: e2e.example.com
+  schedule: "0 2 * * *"
+  withFiles: true
+  storage:
+    s3:
+      bucket: my-frappe-backups
+      region: us-east-1
+      credentialSecretRef:
+        name: s3-credentials
+        namespace: frappe-operator-system

@@ -88,6 +88,41 @@ spec:
               site:
                 description: Site is the name of the Frappe site to backup
                 type: string
+              storage:
+                description: Storage defines offsite storage configuration
+                properties:
+                  s3:
+                    description: S3 configuration
+                    properties:
+                      bucket:
+                        description: Bucket name
+                        type: string
+                      credentialSecretRef:
+                        description: CredentialSecretRef references a Secret containing
+                          AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+                        properties:
+                          name:
+                            description: name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      endpoint:
+                        description: Endpoint URL (required for non-AWS providers
+                          like Minio/DigitalOcean)
+                        type: string
+                      region:
+                        description: Region (optional for some providers)
+                        type: string
+                    required:
+                    - bucket
+                    - credentialSecretRef
+                    type: object
+                type: object
               verbose:
                 default: false
                 description: Verbose adds verbosity to the backup process

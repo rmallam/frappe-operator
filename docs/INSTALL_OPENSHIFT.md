@@ -42,7 +42,7 @@ helm repo add frappe-operator https://rmallam.github.io/frappe-operator/helm-rep
 helm repo update
 
 # Install the Frappe Operator
-helm upgrade --install frappe-operator frappe-operator/frappe-operator \
+helm upgrade --install frappe-operator rmallam/frappe-operator \
   --namespace frappe-operator-system \
   --set operator.image.repository=ghcr.io/rmallam/frappe-operator \
   --set operator.image.tag=v2.6.3 \
@@ -100,6 +100,20 @@ spec:
     requests:
       cpu: 250m
       memory: 512Mi
+  replicas: 1
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: MariaDB
+metadata:
+  name: frappe-mariadb
+  namespace: frappe-operator-system
+spec:
+  rootPasswordSecretKeyRef:
+    name: mariadb-root-password
+    key: password
+  image: mariadb:10.11
+  storage:
+    size: 2Gi
   replicas: 1
 ```
 

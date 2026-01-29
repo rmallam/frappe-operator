@@ -1,0 +1,10 @@
+apiVersion: vyogo.tech/v1alpha1
+kind: SiteBackup
+metadata:
+  name: new-site2-bkp-1
+  namespace: frappe-fixes
+spec:
+  site: new-site2.apps.cluster-5x9wt.dynamic.redhatworkshops.io
+  withFiles: true
+  compress: true
+  backupPath: "/home/frappe/frappe-bench/sites/new-site2-bkp"

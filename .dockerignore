@@ -40,3 +40,4 @@ tmp/
 temp/
 
 !bin/manager-amd64
+!bin/manager-arm64
