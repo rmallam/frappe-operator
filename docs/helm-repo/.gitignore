@@ -1,5 +1,5 @@
-# Ignore packaged chart archives
-*.tgz
+# Allow packaged chart archives in the repository
+!*.tgz
 
 # Keep index.yaml
 !index.yaml
