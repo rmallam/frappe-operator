@@ -989,7 +989,6 @@ exit 0
 								{
 									Name:      "sites",
 									MountPath: "/home/frappe/frappe-bench/sites",
-									SubPath:   "frappe-sites",
 								},
 								{
 									Name:      "site-secrets",
@@ -1183,7 +1182,6 @@ echo "Site $SITE_NAME dropped successfully!"
 									{
 										Name:      "sites",
 										MountPath: "/home/frappe/frappe-bench/sites",
-										SubPath:   "frappe-sites",
 									},
 									{
 										Name:      "deletion-secret",
@@ -1267,9 +1265,8 @@ func (r *FrappeSiteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&batchv1.Job{}).
 		Owns(&networkingv1.Ingress{})
 
-	// Check if OpenShift Route API is available before trying to watch it
-	if r.isRouteAPIAvailable(mgr.GetConfig()) {
-		r.IsOpenShift = true
+	// Use the platform detection result provided via IsOpenShift
+	if r.IsOpenShift {
 		ctrl.Log.WithName("setup").Info("OpenShift platform detected - enabling Route support")
 		builder.Owns(&routev1.Route{})
 	}
@@ -1277,25 +1274,6 @@ func (r *FrappeSiteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return builder.Complete(r)
 }
 
-// isRouteAPIAvailable checks if the OpenShift Route API is available in the cluster
-func (r *FrappeSiteReconciler) isRouteAPIAvailable(config *rest.Config) bool {
-	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
-	if err != nil {
-		return false
-	}
-
-	apiGroupList, err := discoveryClient.ServerGroups()
-	if err != nil {
-		return false
-	}
-
-	for _, group := range apiGroupList.Groups {
-		if group.Name == "route.openshift.io" {
-			return true
-		}
-	}
-	return false
-}
 
 // getMariaDBRootCredentials retrieves MariaDB root credentials for site deletion
 // Returns (username, password, error). Only use these credentials in deletion jobs.

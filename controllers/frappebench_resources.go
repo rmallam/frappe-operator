@@ -536,7 +536,6 @@ func (r *FrappeBenchReconciler) ensureGunicornDeployment(ctx context.Context, be
 								{
 									Name:      "sites",
 									MountPath: "/home/frappe/frappe-bench/sites",
-									SubPath:   "frappe-sites",
 								},
 							},
 							Resources:       r.getGunicornResources(bench),
@@ -710,7 +709,6 @@ func (r *FrappeBenchReconciler) ensureNginxDeployment(ctx context.Context, bench
 								{
 									Name:      "sites",
 									MountPath: "/home/frappe/frappe-bench/sites",
-									SubPath:   "frappe-sites",
 								},
 							},
 							Resources:       r.getNginxResources(bench),
@@ -852,7 +850,6 @@ func (r *FrappeBenchReconciler) ensureSocketIODeployment(ctx context.Context, be
 								{
 									Name:      "sites",
 									MountPath: "/home/frappe/frappe-bench/sites",
-									SubPath:   "frappe-sites",
 								},
 							},
 							Resources:       r.getSocketIOResources(bench),
@@ -945,7 +942,6 @@ func (r *FrappeBenchReconciler) ensureScheduler(ctx context.Context, bench *vyog
 								{
 									Name:      "sites",
 									MountPath: "/home/frappe/frappe-bench/sites",
-									SubPath:   "frappe-sites",
 								},
 							},
 							Resources:       r.getSchedulerResources(bench),
@@ -1107,7 +1103,6 @@ func (r *FrappeBenchReconciler) ensureWorkerDeployment(ctx context.Context, benc
 								{
 									Name:      "sites",
 									MountPath: "/home/frappe/frappe-bench/sites",
-									SubPath:   "frappe-sites",
 								},
 							},
 							Resources:       resources,
@@ -1643,27 +1638,18 @@ func (r *FrappeBenchReconciler) getPodSecurityContext(ctx context.Context, bench
 	// Start with defaults
 	// defaultUID := getDefaultUID()
 	// defaultGID := getDefaultGID()
-	defaultFSGroup := getDefaultFSGroup()
-
-	// Default FSGroupChangePolicy to Always to ensure volume permissions are fixed on every mount
-	// Critical for OpenShift and certain storage provisioners (CephFS, etc.)
-	fsGroupChangePolicy := corev1.FSGroupChangeAlways
-
 	secCtx := &corev1.PodSecurityContext{
 		RunAsNonRoot: boolPtr(true),
-		// RunAsUser:           defaultUID, // Removed to allow OpenShift SCC to assign UID
-		// RunAsGroup:          defaultGID, // Removed to allow OpenShift SCC to assign GID
-		FSGroup:             defaultFSGroup,
-		FSGroupChangePolicy: &fsGroupChangePolicy,
+		// RunAsUser/Group removed to allow OpenShift SCC or auto-detection
 	}
 
-	// For OpenShift, try to match the namespace default MCS label
-	// This ensures all pods in a bench can share the same volumes
+	// For OpenShift, match namespace default MCS label
 	logger := log.FromContext(ctx)
 	if r.IsOpenShift {
 		logger.Info("OpenShift platform detected for Bench security context")
+		logger.Info("Using OpenShift defaults (no explicit FSGroup/SupplementalGroups due to SCC restricted-v2)")
 
-		// 1. Dynamic MCS Labeling (matches namespace defaults)
+		// 1. Dynamic MCS Labeling
 		mcsLabel := getNamespaceMCSLabel(ctx, r.Client, bench.Namespace)
 		if mcsLabel != "" {
 			logger.Info("Applying Namespace MCS label to PodSecurityContext", "mcsLabel", mcsLabel)
@@ -1673,17 +1659,20 @@ func (r *FrappeBenchReconciler) getPodSecurityContext(ctx context.Context, bench
 		} else {
 			logger.Info("Namespace MCS label is empty, skipping SELinuxOptions")
 		}
-
-		// 2. Explicit Group IDs for OpenShift Shared Storage
-		// Removed to allow SCC restricted-v2 to function
-		// Explicitly unset FSGroup to avoid default of 0
+		
+		// Ensure FSGroup fields are nil for OpenShift
 		secCtx.FSGroup = nil
 		secCtx.FSGroupChangePolicy = nil
 		secCtx.SupplementalGroups = nil
-		logger.Info("Using OpenShift defaults (no explicit FSGroup/SupplementalGroups due to SCC restricted-v2)")
 
 	} else {
-		logger.V(1).Info("Not on OpenShift platform, skipping MCS label matching")
+		logger.V(1).Info("Not on OpenShift platform, using standard security context")
+		// Standard Kubernetes: Set FSGroup to ensure permission fixup
+		defaultFSGroup := getDefaultFSGroup()
+		fsGroupChangePolicy := corev1.FSGroupChangeAlways
+		
+		secCtx.FSGroup = defaultFSGroup
+		secCtx.FSGroupChangePolicy = &fsGroupChangePolicy
 	}
 
 	// Add default seccomp profile if not on OpenShift (OpenShift has its own defaults)

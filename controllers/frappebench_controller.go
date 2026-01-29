@@ -94,9 +94,7 @@ func (r *FrappeBenchReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return result, nil
 	}
 
-	if !bench.DeletionTimestamp.IsZero() {
-		return ctrl.Result{}, nil
-	}
+
 
 	// Set progressing condition at start
 	r.setCondition(bench, metav1.Condition{
@@ -496,16 +494,16 @@ fi
 cd /home/frappe/frappe-bench
 
 echo "Checking directory permissions..."
-ls -ld sites || true
 id
 
 echo "Configuring Frappe bench..."
 
-# Create sites directory if it doesn't exist
+# The PVC is mounted directly at /home/frappe/frappe-bench/sites
+# Frappe expects this directory structure for proper operation
 mkdir -p sites
 
-# Test write access
-if ! touch sites/.permission_test; then
+# Test write access to the mounted volume
+if ! touch sites/.permission_test 2>/dev/null; then
     echo "ERROR: sites directory is NOT writable by $(whoami) (UID $(id -u), GID $(id -g))."
     ls -ld sites
     exit 1
@@ -568,7 +566,6 @@ echo "Bench configuration complete"
 								{
 									Name:      "sites",
 									MountPath: "/home/frappe/frappe-bench/sites",
-									SubPath:   "frappe-sites",
 								},
 							},
 							SecurityContext: r.getContainerSecurityContext(ctx, bench),
@@ -814,30 +811,11 @@ func (r *FrappeBenchReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.StatefulSet{})
 
 	// Detect platform
-	if r.isRouteAPIAvailable(mgr.GetConfig()) {
-		r.IsOpenShift = true
+	// r.IsOpenShift is already set by main.go, no need to re-detect
+	if r.IsOpenShift {
 		ctrl.Log.WithName("setup").Info("OpenShift platform detected for FrappeBench")
 	}
 
 	return builder.Complete(r)
 }
 
-// isRouteAPIAvailable checks if the OpenShift Route API is available in the cluster
-func (r *FrappeBenchReconciler) isRouteAPIAvailable(config *rest.Config) bool {
-	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
-	if err != nil {
-		return false
-	}
-
-	apiGroupList, err := discoveryClient.ServerGroups()
-	if err != nil {
-		return false
-	}
-
-	for _, group := range apiGroupList.Groups {
-		if group.Name == "route.openshift.io" {
-			return true
-		}
-	}
-	return false
-}

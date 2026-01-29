@@ -8,7 +8,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.6.3] - 2026-01-28
 
 ### Fixed
-- **Site Deletion Failure**: Fixed an issue where the site deletion job failed to find `apps.txt` by adding the same symlinking logic and volume `SubPath` mounting used in the initialization job.
+- **Site Deletion Failure**: Fixed an issue where the site deletion job failed to find `apps.txt` by adding the same symlinking logic and volume mounting used in the initialization job.
+- **Volume Mount Structure**: Removed incorrect `SubPath: "frappe-sites"` from all volume mounts. Frappe expects the PVC to be mounted directly at `/home/frappe/frappe-bench/sites/` without subdirectory nesting.
+- **GitHub Workflow Security**: Fixed PAT token security issue in publish-helm-chart workflow by using x-access-token URL method instead of credential helper store.
+
+### Changed
+- **BREAKING: Database Hash Format**: Changed hash format from 4-character (`%x`) to 8-character (`%08x`) for database username generation in MariaDB provider. **This is a breaking change that affects existing deployments.** See Migration Notes below for upgrade instructions.
+
+### Migration Notes for v2.6.3
+
+#### Database Hash Format Change
+
+The database username hash format has changed from 4 characters to 8 characters. This affects how database usernames are generated for MariaDB sites.
+
+**Impact:**
+- Existing sites will not be able to connect to their databases after upgrading unless you take action
+- Database usernames will change from format `site_a1b2` to `site_a1b2c3d4`
+
+**Migration Options:**
+
+**Option 1: Keep Existing Sites (Recommended for Production)**
+1. Do NOT upgrade existing sites immediately
+2. Only apply v2.6.3 to NEW sites
+3. Mark existing FrappeSite resources with annotation to prevent upgrades:
+   ```yaml
+   metadata:
+     annotations:
+       frappe.tech/skip-upgrade: "true"
+   ```
+
+**Option 2: Manual Migration (For Advanced Users)**
+1. Before upgrading, note down all existing database usernames
+2. Upgrade the operator
+3. Manually update MariaDB Users and Grants to use new hash format
+4. Update site configs with new database credentials
+
+**Option 3: Fresh Deployment**
+- If testing or development environment, delete all sites and recreate them
+
+**Verification:**
+After upgrade, check that new sites create database users with 8-character hashes:
+```bash
+kubectl get mariadbuser -A
+# Should show usernames like: site_a1b2c3d4 (8 chars after underscore)
+```
 
 ---
 
