@@ -24,56 +24,10 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
         - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
     apiVersion: v2
-    appVersion: 2.6.4
-    created: "2026-01-29T16:52:26.477957+05:30"
-    description: A Kubernetes operator for managing Frappe Framework and ERPNext deployments
-    digest: 566b5fde43affa080bd465a1610a9f9d4f7819d3a4ebd65a81ee01e3e2679a3a
-    home: https://github.com/vyogotech/frappe-operator
-    icon: https://raw.githubusercontent.com/vyogotech/frappe-operator/main/docs/assets/icon.png
-    keywords:
-    - frappe
-    - erpnext
-    - kubernetes
-    - operator
-    - saas
-    maintainers:
-    - email: support@vyogo.tech
-      name: Vyogo Technologies
-      url: https://vyogo.tech
-    name: frappe-operator
-    sources:
-    - https://github.com/vyogotech/frappe-operator
-    type: application
-    urls:
-    - https://vyogotech.github.io/frappe-operator/helm-repo/frappe-operator-2.6.4.tgz
-    version: 2.6.4
-  - annotations:
-      artifacthub.io/category: database
-      artifacthub.io/changes: |
-        - kind: added
-          description: MariaDB Operator integration for secure database provisioning
-        - kind: added
-          description: Auto-generated passwords for admin and database credentials
-        - kind: added
-          description: Per-site database isolation with dedicated users
-        - kind: added
-          description: Production-ready dual Redis architecture (cache + queue)
-        - kind: added
-          description: Multi-platform support (ARM64/AMD64)
-        - kind: security
-          description: Zero hardcoded credentials - all secrets auto-generated
-      artifacthub.io/license: Apache-2.0
-      artifacthub.io/operator: "true"
-      artifacthub.io/operatorCapabilities: Full Lifecycle
-      artifacthub.io/prerelease: "false"
-      artifacthub.io/recommendations: |
-        - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
-        - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
-    apiVersion: v2
     appVersion: 2.6.3
-    created: "2026-01-29T16:52:26.475999+05:30"
+    created: "2026-01-29T09:43:09.936172805Z"
     description: A Kubernetes operator for managing Frappe Framework and ERPNext deployments
-    digest: 3cdab9bd491678b158c0c6817967e262116880dd0d818ae778fc114100de8605
+    digest: c1cb21406eea4729ac5c183feeb003175bca458c4c3dc4347ae0e3aaf681570c
     home: https://github.com/vyogotech/frappe-operator
     icon: https://raw.githubusercontent.com/vyogotech/frappe-operator/main/docs/assets/icon.png
     keywords:
@@ -91,7 +45,7 @@ entries:
     - https://github.com/vyogotech/frappe-operator
     type: application
     urls:
-    - https://vyogotech.github.io/frappe-operator/helm-repo/frappe-operator-2.6.3.tgz
+    - https://rmallam.github.io/frappe-operator/helm-repo/frappe-operator-2.6.3.tgz
     version: 2.6.3
   - annotations:
       artifacthub.io/category: database
@@ -117,7 +71,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
     apiVersion: v2
     appVersion: 2.6.2
-    created: "2026-01-29T16:52:26.473051+05:30"
+    created: "2026-01-29T09:43:09.933085812Z"
     description: A Kubernetes operator for managing Frappe Framework and ERPNext deployments
     digest: 547f5b4568e5002642114f3bda8f9ce8226dbe0911703ea60b1e645506283daa
     home: https://github.com/vyogotech/frappe-operator
@@ -137,7 +91,7 @@ entries:
     - https://github.com/vyogotech/frappe-operator
     type: application
     urls:
-    - https://vyogotech.github.io/frappe-operator/helm-repo/frappe-operator-2.6.2.tgz
+    - https://rmallam.github.io/frappe-operator/helm-repo/frappe-operator-2.6.2.tgz
     version: 2.6.2
   - annotations:
       artifacthub.io/category: database
@@ -163,7 +117,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
     apiVersion: v2
     appVersion: 2.6.1
-    created: "2026-01-29T16:52:26.470496+05:30"
+    created: "2026-01-29T09:43:09.928806286Z"
     description: A Kubernetes operator for managing Frappe Framework and ERPNext deployments
     digest: 8021e85505226d68d4e98007a7126a38769e107d70e6c2b58af25ad5f3dccefc
     home: https://github.com/vyogotech/frappe-operator
@@ -183,7 +137,7 @@ entries:
     - https://github.com/vyogotech/frappe-operator
     type: application
     urls:
-    - https://vyogotech.github.io/frappe-operator/helm-repo/frappe-operator-2.6.1.tgz
+    - https://rmallam.github.io/frappe-operator/helm-repo/frappe-operator-2.6.1.tgz
     version: 2.6.1
   - annotations:
       artifacthub.io/category: database
@@ -209,7 +163,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
     apiVersion: v2
     appVersion: 2.6.0
-    created: "2026-01-29T16:52:26.466741+05:30"
+    created: "2026-01-29T09:43:09.925599339Z"
     description: A Kubernetes operator for managing Frappe Framework and ERPNext deployments
     digest: 3d168c54b83e928ce8aeec4148da6bdac964bdc827f2a92795c01e1effd1d876
     home: https://github.com/vyogotech/frappe-operator
@@ -229,6 +183,52 @@ entries:
     - https://github.com/vyogotech/frappe-operator
     type: application
     urls:
-    - https://vyogotech.github.io/frappe-operator/helm-repo/frappe-operator-2.6.0.tgz
+    - https://rmallam.github.io/frappe-operator/helm-repo/frappe-operator-2.6.0.tgz
     version: 2.6.0
-generated: "2026-01-29T16:52:26.462806+05:30"
+  - annotations:
+      artifacthub.io/category: database
+      artifacthub.io/changes: |
+        - kind: added
+          description: MariaDB Operator integration for secure database provisioning
+        - kind: added
+          description: Auto-generated passwords for admin and database credentials
+        - kind: added
+          description: Per-site database isolation with dedicated users
+        - kind: added
+          description: Production-ready dual Redis architecture (cache + queue)
+        - kind: added
+          description: Multi-platform support (ARM64/AMD64)
+        - kind: security
+          description: Zero hardcoded credentials - all secrets auto-generated
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/operator: "true"
+      artifacthub.io/operatorCapabilities: Full Lifecycle
+      artifacthub.io/prerelease: "false"
+      artifacthub.io/recommendations: |
+        - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
+        - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
+    apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-01-29T01:41:20.451329004Z"
+    description: A Kubernetes operator for managing Frappe Framework and ERPNext deployments
+    digest: bbe334d685434952c0300a598e0957e70ff039a8bd342428114745528accc388
+    home: https://github.com/vyogotech/frappe-operator
+    icon: https://raw.githubusercontent.com/vyogotech/frappe-operator/main/docs/assets/icon.png
+    keywords:
+    - frappe
+    - erpnext
+    - kubernetes
+    - operator
+    - saas
+    maintainers:
+    - email: support@vyogo.tech
+      name: Vyogo Technologies
+      url: https://vyogo.tech
+    name: frappe-operator
+    sources:
+    - https://github.com/vyogotech/frappe-operator
+    type: application
+    urls:
+    - https://vyogotech.github.io/frappe-operator/helm-repo/frappe-operator-1.0.0.tgz
+    version: 1.0.0
+generated: "2026-01-29T09:43:09.921134132Z"
