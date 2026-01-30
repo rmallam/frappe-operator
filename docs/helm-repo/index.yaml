@@ -24,8 +24,54 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
         - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
     apiVersion: v2
+    appVersion: 2.6.4
+    created: "2026-01-30T06:09:50.841907515Z"
+    description: A Kubernetes operator for managing Frappe Framework and ERPNext deployments
+    digest: c4087b0b7e3c803e2e2a368cf5f2e087e08b50b590d514973d16f4d92258768a
+    home: https://github.com/vyogotech/frappe-operator
+    icon: https://raw.githubusercontent.com/vyogotech/frappe-operator/main/docs/assets/icon.png
+    keywords:
+    - frappe
+    - erpnext
+    - kubernetes
+    - operator
+    - saas
+    maintainers:
+    - email: support@vyogo.tech
+      name: Vyogo Technologies
+      url: https://vyogo.tech
+    name: frappe-operator
+    sources:
+    - https://github.com/vyogotech/frappe-operator
+    type: application
+    urls:
+    - https://rmallam.github.io/frappe-operator/helm-repo/frappe-operator-2.6.4.tgz
+    version: 2.6.4
+  - annotations:
+      artifacthub.io/category: database
+      artifacthub.io/changes: |
+        - kind: added
+          description: MariaDB Operator integration for secure database provisioning
+        - kind: added
+          description: Auto-generated passwords for admin and database credentials
+        - kind: added
+          description: Per-site database isolation with dedicated users
+        - kind: added
+          description: Production-ready dual Redis architecture (cache + queue)
+        - kind: added
+          description: Multi-platform support (ARM64/AMD64)
+        - kind: security
+          description: Zero hardcoded credentials - all secrets auto-generated
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/operator: "true"
+      artifacthub.io/operatorCapabilities: Full Lifecycle
+      artifacthub.io/prerelease: "false"
+      artifacthub.io/recommendations: |
+        - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
+        - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
+    apiVersion: v2
     appVersion: 2.6.3
-    created: "2026-01-29T09:43:09.936172805Z"
+    created: "2026-01-30T06:09:50.837869556Z"
     description: A Kubernetes operator for managing Frappe Framework and ERPNext deployments
     digest: c1cb21406eea4729ac5c183feeb003175bca458c4c3dc4347ae0e3aaf681570c
     home: https://github.com/vyogotech/frappe-operator
@@ -71,7 +117,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
     apiVersion: v2
     appVersion: 2.6.2
-    created: "2026-01-29T09:43:09.933085812Z"
+    created: "2026-01-30T06:09:50.834825513Z"
     description: A Kubernetes operator for managing Frappe Framework and ERPNext deployments
     digest: 547f5b4568e5002642114f3bda8f9ce8226dbe0911703ea60b1e645506283daa
     home: https://github.com/vyogotech/frappe-operator
@@ -117,7 +163,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
     apiVersion: v2
     appVersion: 2.6.1
-    created: "2026-01-29T09:43:09.928806286Z"
+    created: "2026-01-30T06:09:50.830962304Z"
     description: A Kubernetes operator for managing Frappe Framework and ERPNext deployments
     digest: 8021e85505226d68d4e98007a7126a38769e107d70e6c2b58af25ad5f3dccefc
     home: https://github.com/vyogotech/frappe-operator
@@ -163,7 +209,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
     apiVersion: v2
     appVersion: 2.6.0
-    created: "2026-01-29T09:43:09.925599339Z"
+    created: "2026-01-30T06:09:50.827811833Z"
     description: A Kubernetes operator for managing Frappe Framework and ERPNext deployments
     digest: 3d168c54b83e928ce8aeec4148da6bdac964bdc827f2a92795c01e1effd1d876
     home: https://github.com/vyogotech/frappe-operator
@@ -231,4 +277,4 @@ entries:
     urls:
     - https://vyogotech.github.io/frappe-operator/helm-repo/frappe-operator-1.0.0.tgz
     version: 1.0.0
-generated: "2026-01-29T09:43:09.921134132Z"
+generated: "2026-01-30T06:09:50.823671121Z"
